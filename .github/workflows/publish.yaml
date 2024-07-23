@@ -1,0 +1,39 @@
+name: Build & push image
+
+on:
+  push:
+    # Only run on pushes to the main or master branch
+    branches: ["main", "master"]
+    # Only run on pushes of the specified tag pattern
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+jobs:
+  build:
+    # This 'if' statement is set to 'false', so this job will never run.
+    # Effectively, this disables the job ツ.
+    if: ${{ false && github.repository == 'cmilhench/x' }}
+    runs-on: ubuntu-latest
+    # Permission to read and write to the GitHub Actions registry
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::799148671415:role/github-actions-ecr-push-role
+          aws-region: eu-west-2
+
+      - name: Go setup
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.x"
+
+      - name: Install dependencies
+        run: make deps
+
+      - name: Publish image to AWS registry
+        run: make publish
