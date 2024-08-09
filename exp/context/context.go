@@ -5,10 +5,6 @@ import (
 	"reflect"
 )
 
-type User struct {
-	Name string
-}
-
 // WithValueOf is a helper function to set a value of a specific type.
 func WithValueOf[T any](parent context.Context, val *T) context.Context {
 	return context.WithValue(parent, reflect.TypeOf((*T)(nil)), val)
