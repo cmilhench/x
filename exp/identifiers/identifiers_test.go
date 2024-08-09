@@ -6,8 +6,8 @@ import (
 )
 
 func Test_Creator(t *testing.T) {
-	ids := make(chan string)
-	store := make(map[string]bool)
+	ids := make(chan uint64)
+	store := make(map[uint64]bool)
 
 	workers := 1024
 	var wg sync.WaitGroup
@@ -31,13 +31,13 @@ func Test_Creator(t *testing.T) {
 	for id := range ids {
 
 		if _, exists := store[id]; exists {
-			t.Errorf("Duplicate ID generated: %s", id)
+			t.Errorf("Duplicate ID generated: %d", id)
 		}
 		store[id] = true
 
 		_, _, _, err := Parse(id)
 		if err != nil {
-			t.Errorf("Failed to parse ID: %s", id)
+			t.Errorf("Failed to parse ID: %d", id)
 		}
 	}
 }

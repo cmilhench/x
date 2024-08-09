@@ -56,7 +56,7 @@ test: lint ## Run the project tests
 start: test ## Start the server
 	$(call cyan, "Running...")
 	$(call setenv,)
-	@go run -ldflags '-w -s ' ./cmd/
+	@go run -ldflags '-w -s ' ./cmd/chat/
 .PHONY: start
 
 watch: ## Run locally and monitor for changes

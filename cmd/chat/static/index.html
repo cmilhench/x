@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Client</title>
+  </head>
+  <body>
+
+    <h2>WebSocket Client</h2>
+
+    <div>
+      <label for="message">Message:</label>
+      <input type="text" id="message" placeholder="message" onchange="enter()">
+    </div>
+
+    <h3>Messages:</h3>
+    <div id="messages"></div>
+
+    <script>
+      function Client(url) {
+        if (!(this instanceof Client)) return new Client(url);
+        this.delay = 0;
+        this.open(url)
+      }
+      Client.prototype.open = function (url) {
+        var self = this;
+        var args = Array.prototype.slice.call(arguments);
+        self._socket = new WebSocket(url);
+        self._socket.binaryType = "arraybuffer";
+        self._socket.onerror = function(event) { 
+          console.error("WebSocket error:", event);
+        };
+        self._socket.onopen = function (event) {
+          self.delay = 0;
+          console.debug('WebSocket connected');
+        }
+        self._socket.onclose = function (event) {
+          console.log('WebSocket disconnected [' + event.code +']!');
+          if (event.code !== 1000) {
+            self.delay = Math.min(Math.max(self.delay *= 2, 0.5), 30); // 0.5, 1, 2, 4, 8, 16, 30, 30
+            window.setTimeout(function () { self.open.apply(self, args); }, self.delay * 1000);
+          }
+        }
+        self._socket.onmessage = function (event) { self.onmessage(event); }
+        return self;
+      }
+      Client.prototype.send = function (data, options) {
+        return this._socket.send(data, options)
+      }
+      Client.prototype.onmessage = function (event) {}
+    </script>
+
+    <script>
+      var c = new Client("ws://localhost:8080/ws");
+      c.onmessage = function(event) {
+        const parent = document.getElementById("messages");
+        const element = document.createElement("div");
+        const arrayBuffer = event.data;
+        message = Parse(new TextDecoder("utf-8").decode(arrayBuffer))
+        console.debug(message)
+        switch (message.Command) {
+          case "NOTICE":
+          case "PONG":
+          case "PRIVMSG":
+            element.textContent = "Received: " + message.Params;
+            break;
+          default:
+            element.textContent = "Received: " + message.Raw;
+            break;
+        }
+        parent.appendChild(element);
+      };
+      function enter() {
+        const encoder = new TextEncoder();
+        const input = document.getElementById("message");
+        let line = input.value;
+        let prefix = '';
+        let command = '';
+        let params = '';
+        let trailing = '';
+        if (line[0] !== '/') {
+          command = 'PRIVMSG'
+          params = '#channel'
+          trailing = line
+        } else {
+          let i = line.indexOf(' ');
+          if (i === -1) {
+            i = line.length;
+          }
+          command = line.substring(1, i);
+          command = command.toUpperCase();
+          switch (command) {
+            case 'NOTICE':
+            case 'PRIVMSG':
+              break;
+            default:
+              break;
+          }
+          line = line.substring(i);
+          // Params
+          i = line.indexOf(' :');
+          if (i === -1) {
+            i = line.length;
+          }
+          if (i !== 0) {
+            params = line.substring(1, i);
+          }
+          // Trailing
+          if (line.length - i > 2) {
+            trailing = line.substring(i + 2);
+          }
+        }
+        message = Message(prefix, command, params, trailing)
+        c.send(encoder.encode(message));
+        input.value = "";
+      };
+    </script>
+
+    <script>
+      function Message(prefix, command, params, trailing) {
+        let result = "";
+        if (prefix) {
+          result += `:${prefix} `;
+        }
+        result += command;
+        if (params) {
+          result += ` ${params}`;
+        }
+        if (trailing) {
+          result += ` :${trailing}`;
+        }
+        return result;
+      }
+      function Parse(line) {
+        line = line.replace(/\r$/, "");
+        line = line.replace(/\r\n$/, ""); 
+        const orig = line;
+        const message = {
+          Raw: orig,
+          Prefix: "",
+          Command: "",
+          Params: "",
+          Trailing: ""
+        };
+        // Prefix
+        if (line[0] === ':') {
+          const i = line.indexOf(" ");
+          message.Prefix = line.substring(1, i);
+          line = line.substring(i + 1);
+        }
+        // Command
+        let i = line.indexOf(" ");
+        if (i === -1) {
+          i = line.length;
+        }
+        message.Command = line.substring(0, i);
+        line = line.substring(i);
+        // Params
+        i = line.indexOf(" :");
+        if (i === -1) {
+          i = line.length;
+        }
+        if (i !== 0) {
+          message.Params = line.substring(1, i);
+        }
+        // Trailing
+        if (line.length - i > 2) {
+          message.Trailing = line.substring(i + 2);
+        }
+        return message;
+      }
+    </script>
+
+  </body>
+</html>
