@@ -8,6 +8,7 @@ import (
 // 41 bits = milliseconds from epoch (max:2199023255551 = ~69 years)
 // 10 bits = shard (max:1024)
 // 12 bits = auto-incrementing and wrapping index (max:4095) see %
+
 func Creator(shard uint16) func() uint64 {
 	e := int64(1577836800000) // time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	l := time.Now().UnixMilli() - e
@@ -42,7 +43,7 @@ func Creator(shard uint16) func() uint64 {
 	}
 }
 
-// Parse an identifier into it's components
+// Parse an identifier into it's components.
 func Parse(hash uint64) (time.Time, uint64, uint64, error) {
 	e := int64(1577836800000) // time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	n := (hash << (1)) >> 23

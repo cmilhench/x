@@ -1,4 +1,4 @@
-package pipeline
+package pipeline_test
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	. "github.com/cmilhench/x/exp/pipeline"
 )
 
 func Test(t *testing.T) {
@@ -36,13 +38,14 @@ func process(ctx context.Context, numbers []int) (int, error) {
 	// spin up the workers
 	results := make([]<-chan Result[int], workers)
 	for i := 0; i < workers; i++ {
-		results[i] = Worker(ctx, i, tasks, divide)
+		results[i] = Map(ctx, i, tasks, divide)
 	}
 	// receive the answers
 	count := 0
 	errs := []error{}
 	for answer := range FanIn(ctx, results...) {
 		count = count + 1
+
 		if answer.Err != nil {
 			errs = append(errs, answer.Err)
 		}
@@ -53,4 +56,9 @@ func process(ctx context.Context, numbers []int) (int, error) {
 func divide(ctx context.Context, id int, in int) Result[int] {
 	time.Sleep(2000 * time.Millisecond)
 	return Result[int]{Out: 100 / in}
+}
+
+type Result[T any] struct {
+	Out T
+	Err error
 }

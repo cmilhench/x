@@ -7,7 +7,7 @@ import (
 )
 
 // neutered is a http file system wrapper that disables FileServer Directory Listings
-// and roots every path in /static
+// and roots every path in /static.
 type Neutered struct {
 	Prefix     string
 	FileSystem http.FileSystem

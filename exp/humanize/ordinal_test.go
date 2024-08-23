@@ -1,6 +1,10 @@
-package humanize
+package humanize_test
 
-import "testing"
+import (
+	"testing"
+
+	. "github.com/cmilhench/x/exp/humanize"
+)
 
 func Test_Ordinal(t *testing.T) {
 	tests := []struct {

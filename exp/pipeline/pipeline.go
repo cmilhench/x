@@ -7,11 +7,6 @@ import (
 	"sync"
 )
 
-type Result[T any] struct {
-	Out T
-	Err error
-}
-
 // Generator generates values from a slice and sends them to a channel.
 // It stops generating values when the 'done' channel is closed.
 func Generator[T any](done <-chan struct{}, in ...T) <-chan T {
@@ -60,11 +55,33 @@ func FanIn[T any](ctx context.Context, in ...<-chan T) <-chan T {
 	return out
 }
 
-// Worker applies a function to values received from an input channel.
+func Filter[T any](ctx context.Context, in <-chan T, fn ...func(T) bool) <-chan T {
+	out := make(chan T)
+	go func() {
+		defer close(out)
+	outer:
+		for v := range in {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				for _, fn := range fn {
+					if !fn(v) {
+						continue outer
+					}
+				}
+				out <- v
+			}
+		}
+	}()
+	return out
+}
+
+// Map applies a function to values received from an input channel.
 // It sends the results of the function to an output channel.
 // The worker stops when the input channel is closed or the context is canceled.
-func Worker[I, O any](ctx context.Context, id int, in <-chan I, fn func(context.Context, int, I) Result[O]) <-chan Result[O] {
-	out := make(chan Result[O])
+func Map[I, O any](ctx context.Context, id int, in <-chan I, fn func(context.Context, int, I) O) <-chan O {
+	out := make(chan O)
 	go func() {
 		defer close(out)
 		for i := range in {
@@ -76,5 +93,26 @@ func Worker[I, O any](ctx context.Context, id int, in <-chan I, fn func(context.
 			}
 		}
 	}()
+	return out
+}
+
+func Tee[T any](ctx context.Context, in <-chan T, n int) []<-chan T {
+	chn := make([]chan T, n)
+	out := []<-chan T{}
+	for i := 0; i < n; i++ {
+		chn[i] = make(chan T)
+		out = append(out, chn[i])
+		go func(i int) {
+			defer close(chn[i])
+			for v := range in {
+				select {
+				case <-ctx.Done():
+					return
+				case chn[i] <- v:
+				}
+			}
+		}(i)
+	}
+
 	return out
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/cmilhench/x/exp/irc"
 )
 
-//go:embed static
+//go:embed static/*
 var fs embed.FS
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 	}
 }
 
-func socketHandler(server *socket.SocketServer) socket.MessageHandler {
+func socketHandler(server *socket.Server) socket.MessageHandler {
 	return func(client *socket.Client, messageBytes []byte) {
 		message := irc.ParseMessage(string(messageBytes))
 		log.Printf("message ->: %#v", message)
@@ -45,9 +45,9 @@ func socketHandler(server *socket.SocketServer) socket.MessageHandler {
 			client.Send([]byte(fmt.Sprintf("PONG %s", message.Params)))
 		case "NOTICE", "PRIVMSG": // Sends <message> to <target>, which is usually a user or channel.
 			if message.Params[0] == '#' {
-				server.Broadcast([]byte(fmt.Sprintf(":%s PRIVMSG %s", client.Name, message.Trailing)))
+				server.Broadcast([]byte(fmt.Sprintf(":%s PRIVMSG %s :%s", client.Name, message.Params, message.Trailing)))
 			} else {
-				server.Send(message.Params, []byte(fmt.Sprintf(":%s PRIVMSG %s", client.Name, message.Trailing)))
+				server.Send(message.Params, []byte(fmt.Sprintf(":%s PRIVMSG %s :%s", client.Name, message.Params, message.Trailing)))
 			}
 		case "QUIT": // disconnects the user from the server.
 			server.Part(client)

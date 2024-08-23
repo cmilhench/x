@@ -2,6 +2,7 @@ package humanize
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -17,6 +18,7 @@ func Comma(x int64) string {
 		value = append([]string{fmt.Sprintf("%03d", (x % 1000))}, value...)
 		x = x / 1000
 	}
-	value = append([]string{fmt.Sprintf("%d", (x))}, value...)
+
+	value = append([]string{strconv.FormatInt(x, 10)}, value...)
 	return sign + strings.Join(value, ",")
 }

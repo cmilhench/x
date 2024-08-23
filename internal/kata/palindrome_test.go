@@ -1,4 +1,4 @@
-package kata
+package kata_test
 
 import "testing"
 
@@ -36,7 +36,7 @@ func Test_IsPalindromeText(t *testing.T) {
 		{"A is a palindrome", "A", true},
 		{"AA is a palindrome", "AA", true},
 		{"AB is not a palindrome", "AB", false},
-		{"A A is not a palindrome", "A A", true},
+		{"B B is a palindrome", "B B", true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

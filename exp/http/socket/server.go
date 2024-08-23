@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type SocketServer struct {
+type Server struct {
 	clients   map[*Client]struct{}
 	broadcast chan []byte
 	messages  chan struct {
@@ -21,8 +21,8 @@ type SocketServer struct {
 	mu      sync.Mutex
 }
 
-func NewSocketServer() *SocketServer {
-	return &SocketServer{
+func NewSocketServer() *Server {
+	return &Server{
 		clients:   make(map[*Client]struct{}),
 		broadcast: make(chan []byte),
 		messages: make(chan struct {
@@ -34,7 +34,7 @@ func NewSocketServer() *SocketServer {
 	}
 }
 
-func (s *SocketServer) Start() {
+func (s *Server) Start() {
 	go func() {
 		for {
 			select {
@@ -81,28 +81,28 @@ func (s *SocketServer) Start() {
 	}()
 }
 
-func (s *SocketServer) Broadcast(message []byte) {
+func (s *Server) Broadcast(message []byte) {
 	s.broadcast <- message
 }
 
-func (s *SocketServer) Handle(handler MessageHandler) {
+func (s *Server) Handle(handler MessageHandler) {
 	s.handler = handler
 }
 
-func (s *SocketServer) Send(target string, message []byte) {
+func (s *Server) Send(target string, message []byte) {
 	s.messages <- struct {
 		Target string
 		Data   []byte
 	}{target, message}
 }
 
-func (s *SocketServer) Part(client *Client) {
+func (s *Server) Part(client *Client) {
 	s.part <- client
 }
 
-func (s *SocketServer) HandleConnections(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleConnections(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
+		CheckOrigin: func(*http.Request) bool { return true },
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)

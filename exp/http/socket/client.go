@@ -4,9 +4,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/cmilhench/x/exp/uuid"
-
 	"github.com/gorilla/websocket"
+
+	"github.com/cmilhench/x/exp/uuid"
 )
 
 type Client struct {
@@ -19,7 +19,7 @@ type Client struct {
 type MessageHandler func(*Client, []byte)
 
 func NewClient(conn *websocket.Conn) *Client {
-	id, _ := uuid.New()
+	id, _ := uuid.New4()
 	return &Client{
 		id:   id,
 		conn: conn,

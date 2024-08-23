@@ -30,7 +30,7 @@ func init() {
 }
 
 // IsReserved checks weather the provided value could be considered a reserved
-// subdomain matching words and patterns such as; auth, help, smtp, www3, etc
+// subdomain matching words and patterns such as; auth, help, smtp, www3, etc.
 func IsReserved(value string) bool {
 	if _, ok := reserved[value]; ok {
 		return true

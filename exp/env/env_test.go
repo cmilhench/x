@@ -1,9 +1,10 @@
 // Package env provides environment variable utilities.
-package env
+package env_test
 
 import (
-	"os"
 	"testing"
+
+	. "github.com/cmilhench/x/exp/env"
 )
 
 func TestGet(t *testing.T) {
@@ -28,7 +29,7 @@ func TestGet(t *testing.T) {
 			want:        "test2",
 		},
 	}
-	os.Setenv("TEST2", "test2")
+	t.Setenv("TEST2", "test2")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.shouldPanic {
@@ -65,7 +66,7 @@ func TestGetDefault(t *testing.T) {
 			want: "test2",
 		},
 	}
-	os.Setenv("TEST2", "test2")
+	t.Setenv("TEST2", "test2")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GetDefault(tt.args.name, tt.args.value); got != tt.want {

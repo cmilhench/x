@@ -10,7 +10,7 @@ type Message struct {
 	Command  string
 	Params   string
 	Trailing string
-	_raw     string
+	// _raw     string
 }
 
 func ParseMessage(line string) *Message {
@@ -22,8 +22,8 @@ func ParseMessage(line string) *Message {
 func (c *Message) Parse(line string) {
 	line = strings.TrimSuffix(line, "\r")
 	line = strings.TrimSuffix(line, "\r\n")
-	orig := line
-	c._raw = orig
+	// orig := line
+	// c._raw = orig
 	// Prefix
 	if line[0] == ':' {
 		i := strings.Index(line, " ")

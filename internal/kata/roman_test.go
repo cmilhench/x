@@ -1,4 +1,4 @@
-package kata
+package kata_test
 
 import (
 	"fmt"
@@ -38,6 +38,7 @@ func Test_RomanNumeral(t *testing.T) {
 }
 
 func Test_ParseRomanNumeral(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		in      string
@@ -114,6 +115,7 @@ func RomanNumeral(num int) string {
 	val := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
 	sym := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
 	out := ""
+
 	for i := 0; i < len(val); i++ {
 		for num >= val[i] {
 			out += sym[i]
@@ -127,6 +129,7 @@ func ParseRomanNumeral(roman string) int {
 	val := map[byte]int{'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
 	out := 0
 	prev := 0
+
 	for i := len(roman) - 1; i >= 0; i-- {
 		cur := val[roman[i]]
 		if cur < prev {

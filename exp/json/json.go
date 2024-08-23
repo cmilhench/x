@@ -18,7 +18,7 @@ func From[T any](r io.Reader, t T) (T, error) {
 	return t, nil
 }
 
-// To marshals the provide type to a writer
+// To marshals the provide type to a writer.
 func To[T any](w io.Writer, t T) error {
 	bts, err := json.Marshal(t)
 	if err != nil {

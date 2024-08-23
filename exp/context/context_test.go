@@ -1,9 +1,11 @@
-package context
+package context_test
 
 import (
 	"context"
 	"reflect"
 	"testing"
+
+	. "github.com/cmilhench/x/exp/context"
 )
 
 func TestWithUser(t *testing.T) {

@@ -38,7 +38,7 @@ func (v Time) Value() (driver.Value, error) {
 	return driver.Value(time.Time(v).Format(TimeFormat)), nil
 }
 
-// UnmarshalText parses time from the text
+// UnmarshalText parses time from the text.
 func (v *Time) UnmarshalText(value string) error {
 	dd, err := time.Parse(TimeFormat, value)
 	if err != nil {

@@ -1,8 +1,10 @@
-package identifiers
+package identifiers_test
 
 import (
 	"sync"
 	"testing"
+
+	. "github.com/cmilhench/x/exp/identifiers"
 )
 
 func Test_Creator(t *testing.T) {
@@ -13,7 +15,7 @@ func Test_Creator(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(workers)
 
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		go func(instance int) {
 			defer wg.Done()
 			gen := Creator(uint16(instance))
@@ -29,7 +31,6 @@ func Test_Creator(t *testing.T) {
 	}()
 
 	for id := range ids {
-
 		if _, exists := store[id]; exists {
 			t.Errorf("Duplicate ID generated: %d", id)
 		}

@@ -90,7 +90,7 @@ func getNextWeekday(current time.Time, weekday time.Weekday) time.Time {
 
 func getNthWeekday(current time.Time, nth int, weekday time.Weekday) time.Time {
 	offset := (int(weekday) - int(current.Weekday()) + 7) % 7
-	offset = offset + (nth-1)*7
+	offset += (nth - 1) * 7
 	current = current.AddDate(0, 0, offset)
 	return current
 }
@@ -99,7 +99,8 @@ func NextMonthlyOccurrence(current time.Time, interval int, daysOfWeek []time.We
 	if weekOfMonth == nil {
 		weekOfMonth = ptr.Int32(1)
 	}
-	if len(daysOfWeek) == 1 {
+	switch {
+	case len(daysOfWeek) == 1:
 		// at (T) every (N) month(s) on the (Nth) Sunday until ...
 		// next occurrence is on nth weekday in interval months (or this month if date not passed)
 		found := getNthWeekdayOfMonth(current, current.Month(), daysOfWeek[0], int(*weekOfMonth))
@@ -108,7 +109,7 @@ func NextMonthlyOccurrence(current time.Time, interval int, daysOfWeek []time.We
 		} else {
 			current = getNthWeekdayOfMonth(current, time.Month(int(current.Month())+interval), daysOfWeek[0], int(*weekOfMonth))
 		}
-	} else if dayOfMonth != nil && len(daysOfWeek) == 0 {
+	case dayOfMonth != nil && len(daysOfWeek) == 0:
 		// at (T) every (N) month(s) on the (Nth) until ...
 		// next occurrence is on the same date in interval months (or this month if date not passed)
 		found := time.Date(current.Year(), current.Month(), int(*dayOfMonth), current.Hour(), current.Minute(), current.Second(), 0, time.UTC)
@@ -117,7 +118,7 @@ func NextMonthlyOccurrence(current time.Time, interval int, daysOfWeek []time.We
 		} else {
 			current = current.AddDate(0, interval, 0)
 		}
-	} else {
+	default:
 		// at (T) every (N) month(s)
 		// next occurrence is in interval days
 		current = current.AddDate(0, interval, 0)

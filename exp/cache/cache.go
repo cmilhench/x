@@ -63,18 +63,18 @@ func (c *Cache) Get(key string) (value interface{}, found bool) {
 	item, found := c.items[key]
 
 	if !found {
-		//log.Debugf("  - %s not found in cache of %d items %p", key, len(c.items), c)
+		// log.Debugf("  - %s not found in cache of %d items %p", key, len(c.items), c)
 		return
 	}
 	if item.Expiration > 0 {
 		if time.Now().UnixNano() > item.Expiration {
 			found = false
-			//log.Debugf("  - %s not found in cache of %d items %p", key, len(c.items), c)
+			// log.Debugf("  - %s not found in cache of %d items %p", key, len(c.items), c)
 			return
 		}
 	}
 	value = item.Object
-	//log.Debugf("  - %s found in cache of %d items %p", key, len(c.items), c)
+	// log.Debugf("  - %s found in cache of %d items %p", key, len(c.items), c)
 	return
 }
 
@@ -92,7 +92,7 @@ func (c *Cache) Delete(key string) {
 		c.lock.Unlock()
 	}()
 	delete(c.items, key)
-	//log.Debugf("  - %s removed from cache of %d items %p", key, len(c.items), c)
+	// log.Debugf("  - %s removed from cache of %d items %p", key, len(c.items), c)
 }
 
 func (c *Cache) Flush() {
@@ -101,7 +101,7 @@ func (c *Cache) Flush() {
 		c.lock.Unlock()
 	}()
 	c.items = map[string]Item{}
-	//log.Debugf("  - Everything removed from cache of %d items %p", len(c.items), c)
+	// log.Debugf("  - Everything removed from cache of %d items %p", len(c.items), c)
 }
 
 // -- Housekeeping
