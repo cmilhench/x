@@ -407,7 +407,7 @@ func TestReduce(t *testing.T) {
 
 	output := Reduce(ctx, input, func(acc int, val int) int {
 		return acc + val
-	})
+	}, 0, -1)
 	var result []int
 	for val := range output {
 		result = append(result, val)
@@ -415,4 +415,30 @@ func TestReduce(t *testing.T) {
 
 	AssertExecutionTime(t, start, 2000*time.Millisecond, 10*time.Millisecond)
 	AssertResults(t, result, []int{55})
+}
+
+func TestWhenAll(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	input1 := Generator(ctx, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}...)
+	input2 := Input(t)
+
+	<-WhenAll(ctx, input1, input2).Done()
+
+	AssertExecutionTime(t, start, 2000*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestWhenAny(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	input1 := Generator(ctx, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}...)
+	input2 := Input(t)
+
+	<-WhenAny(ctx, input1, input2).Done()
+
+	AssertExecutionTime(t, start, time.Millisecond, 10*time.Millisecond)
 }

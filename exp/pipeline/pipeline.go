@@ -45,21 +45,24 @@ func Take[T any](ctx context.Context, in <-chan T, n int) <-chan T {
 // Drop discards the first n values from the input channel and sends the rest
 // to the output channel.
 func Drop[T any](ctx context.Context, in <-chan T, n int) <-chan T {
-	out := make(chan T)
+	out := make(chan T, cap(in))
 	go func() {
 		defer close(out)
-		for i := 0; i < n; i++ {
+		for i := 0; ; i++ {
 			select {
 			case <-ctx.Done():
 				return
-			case <-in: // in
-			}
-		}
-		for v := range in {
-			select {
-			case <-ctx.Done():
-				return
-			case out <- v: // out ← in
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
+				if i >= n {
+					select {
+					case <-ctx.Done():
+						return
+					case out <- v: // out ← in
+					}
+				}
 			}
 		}
 	}()
@@ -70,21 +73,28 @@ func Drop[T any](ctx context.Context, in <-chan T, n int) <-chan T {
 // If all functions return true, the value is sent to the output channel.
 // The worker stops when the input channel is closed or the context is canceled.
 func Filter[T any](ctx context.Context, in <-chan T, fn ...func(T) bool) <-chan T {
-	out := make(chan T)
+	out := make(chan T, cap(in))
 	go func() {
 		defer close(out)
 	outer:
-		for v := range in {
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
 				for _, fn := range fn {
 					if !fn(v) {
 						continue outer
 					}
 				}
-				out <- v
+				select {
+				case out <- v:
+				case <-ctx.Done():
+					return
+				}
 			}
 		}
 	}()
@@ -98,12 +108,19 @@ func Map[I, O any](ctx context.Context, id int, in <-chan I, fn func(context.Con
 	out := make(chan O)
 	go func() {
 		defer close(out)
-		for i := range in {
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				out <- fn(ctx, id, i)
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
+				select {
+				case out <- fn(ctx, id, v):
+				case <-ctx.Done():
+					return
+				}
 			}
 		}
 	}()
@@ -222,15 +239,26 @@ func Partition[T any](ctx context.Context, id int, in <-chan T, fn func(context.
 	go func() {
 		defer close(a)
 		defer close(b)
-		for i := range in {
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				if fn(ctx, id, i) {
-					a <- i
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
+				if fn(ctx, id, v) {
+					select {
+					case a <- v:
+					case <-ctx.Done():
+						return
+					}
 				} else {
-					b <- i
+					select {
+					case b <- v:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		}
@@ -249,13 +277,23 @@ func Sample[T any](ctx context.Context, in <-chan T, rate time.Duration) <-chan 
 		defer close(out)
 		ticker := time.NewTicker(rate)
 		defer ticker.Stop()
-		for i := range in {
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
-				out <- i
-			default:
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
+				select {
+				case <-ticker.C:
+					select {
+					case out <- v: // out ← %+v
+					case <-ctx.Done(): // canceled?
+						return
+					}
+				default:
+				}
 			}
 		}
 	}()
@@ -309,27 +347,33 @@ func Broadcast[T any](ctx context.Context, in <-chan T, n int) []<-chan T {
 // Chunk groups values from the input channel into slices of a given size and sends each chunk to the output channel.
 // The final chunk may be smaller than the chunk size if there are not enough remaining values.
 func Chunk[T any](ctx context.Context, in <-chan T, size int) <-chan []T {
+	// if size <= 0 {
+	// 	return nil, fmt.Errorf("chunk size must be greater than 0")
+	// }
 	out := make(chan []T)
 	go func() {
 		defer close(out)
-		var chunk []T
-		for v := range in {
+		chunk := make([]T, 0, size)
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case v, ok := <-in:
+				if !ok {
+					if len(chunk) > 0 {
+						out <- chunk
+					}
+					return
+				}
 				chunk = append(chunk, v)
 				if len(chunk) == size {
 					out <- chunk
-					chunk = nil
+					chunk = make([]T, 0, size)
 				}
 			}
 		}
-		if len(chunk) > 0 {
-			out <- chunk
-		}
 	}()
-	return out
+	return out //, nil
 }
 
 // Window groups incoming values into overlapping windows of a specified size and slide.
@@ -337,12 +381,18 @@ func Window[T any](ctx context.Context, in <-chan T, size int, slide int) <-chan
 	out := make(chan []T)
 	go func() {
 		defer close(out)
-		var window []T
-		for v := range in {
+		window := make([]T, size)
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case v, ok := <-in:
+				if !ok {
+					if len(window) > 0 {
+						out <- window
+					}
+					return
+				}
 				window = append(window, v)
 				if len(window) > size {
 					window = window[1:]
@@ -352,9 +402,6 @@ func Window[T any](ctx context.Context, in <-chan T, size int, slide int) <-chan
 					window = window[slide:]
 				}
 			}
-		}
-		if len(window) > 0 {
-			out <- window
 		}
 	}()
 	return out
@@ -366,14 +413,19 @@ func Distinct[T any, K comparable](ctx context.Context, in <-chan T, keyFn func(
 	go func() {
 		defer close(out)
 		var last K
-		for v := range in {
+		var first = true
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
 				this := keyFn(v)
-				if this != last {
+				if first || this != last {
 					last = this
+					first = false
 					out <- v
 				}
 			}
@@ -445,20 +497,98 @@ func RateLimiter[T any](ctx context.Context, in <-chan T, limit int, per time.Du
 }
 
 // Reduce applies a reducing function to all values from the input channel and produces a single output.
-func Reduce[L, R any](ctx context.Context, in <-chan R, fn func(L, R) L) <-chan L {
+func Reduce[L, R any](ctx context.Context, in <-chan R, fn func(L, R) L, initial, zero L) <-chan L {
 	out := make(chan L)
 	go func() {
 		defer close(out)
-		var acc L
-		for v := range in {
+		acc := initial
+		any := false
+	outer:
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case v, ok := <-in:
+				if !ok {
+					break outer
+				}
 				acc = fn(acc, v)
+				any = true
 			}
 		}
-		out <- acc
+		if any {
+			out <- acc
+		} else {
+			out <- zero
+		}
 	}()
+	return out
+}
+
+// WhenAll returns a context that is canceled when all the input contexts are canceled.
+// When any of the input contexts are canceled, the returned context is also canceled.
+func WhenAll[T any](ctx context.Context, in ...<-chan T) context.Context {
+	var wg sync.WaitGroup
+	out, cancel := context.WithCancel(ctx)
+
+	// Select from all the channels
+	for _, v := range in {
+		wg.Add(1)
+		go func(c <-chan T) {
+			defer wg.Done()
+			for {
+				select {
+				case _, ok := <-v: // out ← %+v
+					if !ok {
+						return
+					}
+				case <-ctx.Done(): // canceled?
+					return
+				}
+			}
+		}(v)
+	}
+
+	// Wait for all the reads to complete
+	go func() {
+		wg.Wait()
+		cancel()
+	}()
+
+	return out
+}
+
+// WhenAny returns a context that is canceled when any of the input contexts are canceled.
+// When the returned context is canceled, all the input contexts are also canceled.
+// The returned context is also canceled when all the input contexts are canceled.
+func WhenAny[T any](ctx context.Context, in ...<-chan T) context.Context {
+	var wg sync.WaitGroup
+	out, cancel := context.WithCancel(ctx)
+
+	// Select from all the channels
+	for _, v := range in {
+		wg.Add(1)
+		go func(c <-chan T) {
+			defer wg.Done()
+			for {
+				select {
+				case _, ok := <-v: // out ← %+v
+					if !ok {
+						cancel()
+						return
+					}
+				case <-out.Done(): // canceled?
+					return
+				}
+			}
+		}(v)
+	}
+
+	// Wait for all the reads to complete
+	go func() {
+		wg.Wait()
+		cancel()
+	}()
+
 	return out
 }
