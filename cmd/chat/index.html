@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Client</title>
+    </head>
+    <body>
+
+        <h2>Client</h2>
+
+        <script>
+            function Client(url) {
+                if (!(this instanceof Client)) return new Client(url);
+                this.delay = 0;
+                this.open(url)
+            }
+            Client.prototype.open = function (url) {
+                var self = this;
+                var args = Array.prototype.slice.call(arguments);
+                self._socket = new WebSocket(url);
+                self._socket.binaryType = "arraybuffer";
+                self._socket.onerror = function(event) { 
+                console.error("WebSocket error:", event);
+                };
+                self._socket.onopen = function (event) {
+                self.delay = 0;
+                console.debug('WebSocket connected');
+                }
+                self._socket.onclose = function (event) {
+                console.log('WebSocket disconnected [' + event.code +']!');
+                if (event.code !== 1000) {
+                    self.delay = Math.min(Math.max(self.delay *= 2, 0.5), 30); // 0.5, 1, 2, 4, 8, 16, 30, 30
+                    window.setTimeout(function () { self.open.apply(self, args); }, self.delay * 1000);
+                }
+                }
+                self._socket.onmessage = function (event) { self.onmessage(event); }
+                return self;
+            }
+            Client.prototype.send = function (data, options) {
+                return this._socket.send(data, options)
+            }
+            Client.prototype.onmessage = function (event) {}
+        </script>
+
+        <script>
+            const encoder = new TextEncoder();
+        var c = new Client("ws://localhost:8080/stream/ws");
+        c.onmessage = function(event) {
+            const arrayBuffer = event.data;
+            let message = new TextDecoder("utf-8").decode(arrayBuffer)
+            console.debug("ws", message)
+            if (message.indexOf('pong', 0) == 0) {
+                window.setTimeout(function(){
+                        c.send(encoder.encode("ping"))
+                    }, 1000)
+            }
+        };
+        window.setTimeout(function(){
+            c.send(encoder.encode("ping"))
+        }, 2000);
+        </script>
+        <script>
+            const events = new EventSource("http://localhost:8080/stream/events", {
+                withCredentials: true,
+            });
+            events.onmessage = (event) => {
+                console.debug("es", event.data)
+            };
+            events.onerror = (err) => {
+                console.error("EventSource failed:", err);
+            };
+        </script>
+    </body>
+</html>

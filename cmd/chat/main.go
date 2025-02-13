@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cmilhench/x/exp/http/socket"
 	"github.com/cmilhench/x/exp/http/static"
+	"github.com/cmilhench/x/exp/http/stream"
 	"github.com/cmilhench/x/exp/irc"
 )
 
@@ -16,12 +16,11 @@ import (
 var fs embed.FS
 
 func main() {
-	server := socket.NewSocketServer()
-	server.Handle(socketHandler(server))
-	server.Start()
+	server := stream.NewServer()
+	go server.Listen()
 
 	http.Handle("/", http.FileServer(static.Neutered{Prefix: "static", FileSystem: http.FS(fs)}))
-	http.HandleFunc("/ws", server.HandleConnections)
+	http.HandleFunc("/ws", server.WebsocketHandler(socketHandler(server)))
 
 	log.Println("Socket server started on :8080")
 	err := http.ListenAndServe(":8080", nil)
@@ -30,8 +29,8 @@ func main() {
 	}
 }
 
-func socketHandler(server *socket.Server) socket.MessageHandler {
-	return func(client *socket.Client, messageBytes []byte) {
+func socketHandler(server *stream.Server) stream.MessageHandler {
+	return func(client stream.Client, messageBytes []byte) {
 		message := irc.ParseMessage(string(messageBytes))
 		log.Printf("message ->: %#v", message)
 		switch message.Command {
@@ -40,14 +39,14 @@ func socketHandler(server *socket.Server) socket.MessageHandler {
 		case "MOTD": // returns the message of the day
 			client.Send([]byte(fmt.Sprintf("MOTD %s", "Welcome to the IRC server!")))
 		case "NICK": // allows a client to change their IRC nickname.
-			client.Name = message.Params
+			//client.Identifier(message.Params)
 		case "PING": // tests the presence of a connection
 			client.Send([]byte(fmt.Sprintf("PONG %s", message.Params)))
 		case "NOTICE", "PRIVMSG": // Sends <message> to <target>, which is usually a user or channel.
 			if message.Params[0] == '#' {
-				server.Broadcast([]byte(fmt.Sprintf(":%s PRIVMSG %s :%s", client.Name, message.Params, message.Trailing)))
+				server.Broadcast([]byte(fmt.Sprintf(":%s PRIVMSG %s :%s", client.Identifier(), message.Params, message.Trailing)))
 			} else {
-				server.Send(message.Params, []byte(fmt.Sprintf(":%s PRIVMSG %s :%s", client.Name, message.Params, message.Trailing)))
+				server.Send(message.Params, []byte(fmt.Sprintf(":%s PRIVMSG %s :%s", client.Identifier(), message.Params, message.Trailing)))
 			}
 		case "QUIT": // disconnects the user from the server.
 			server.Part(client)

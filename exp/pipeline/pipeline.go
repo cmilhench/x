@@ -25,6 +25,25 @@ func Generator[T any](ctx context.Context, in ...T) <-chan T {
 	return out
 }
 
+// Repeat continuously emits values from a slice and sends them to a channel
+// It stops generating values when the 'done' channel is closed.
+func Repeat[T any](ctx context.Context, in ...T) <-chan T {
+	out := make(chan T)
+	go func() {
+		defer close(out)
+		for {
+			for _, v := range in {
+				select {
+				case out <- v: // out ← %+v
+				case <-ctx.Done(): // canceled?
+					return
+				}
+			}
+		}
+	}()
+	return out
+}
+
 // Take receives values from an input channel and sends only the first n values
 // to the output channel.
 func Take[T any](ctx context.Context, in <-chan T, n int) <-chan T {

@@ -73,6 +73,22 @@ func TestGenerator(t *testing.T) {
 	}
 }
 
+func TestRepeat(t *testing.T) {
+	// Test with a simple generator function
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	input := Take(ctx, Repeat(ctx, 1, 2), 5)
+	var result []int
+	for val := range input {
+		result = append(result, val)
+	}
+
+	AssertExecutionTime(t, start, 1000*time.Millisecond, 10*time.Millisecond)
+	AssertResults(t, result, []int{1, 2, 1, 2, 1})
+}
+
 func TestDrop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
